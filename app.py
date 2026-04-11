@@ -13,9 +13,6 @@ try:
 except Exception as _secrets_err:
     pass  # Running locally without secrets — .env will be used
 
-# Debug: show which keys are loaded (remove after confirming it works)
-_loaded = [k for k in ["ANTHROPIC_API_KEY", "HF_API_KEY"] if os.environ.get(k)]
-_missing = [k for k in ["ANTHROPIC_API_KEY", "HF_API_KEY"] if not os.environ.get(k)]
 
 from processor import extract
 from analyzer import analyze
@@ -108,11 +105,6 @@ st.markdown("""
 st.markdown("## 📊 AI Visual Report Generator")
 st.markdown("Upload any document — PDF, text, CSV, or image — to get an instant structured analysis with charts and insights.")
 
-# Temporary debug — remove after keys confirmed working
-if _missing:
-    st.warning(f"⚠️ Missing API keys: {', '.join(_missing)}")
-if _loaded:
-    st.success(f"✅ Keys loaded: {', '.join(_loaded)}")
 st.divider()
 
 uploaded_file = st.file_uploader("Upload a file", type=["pdf", "txt", "csv", "jpg", "png"])
