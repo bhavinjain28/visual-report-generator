@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Visual Report Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #07080f;
+  --glass: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-hover: rgba(255,255,255,0.07);
+  --text: #f0f2ff;
+  --muted: rgba(200,205,255,0.45);
+  --accent1: #7c6fff;
+  --accent2: #3ecfcf;
+  --accent3: #ff6b9d;
+  --accent4: #ffa95c;
+  --orb1: rgba(124,111,255,0.18);
+  --orb2: rgba(62,207,207,0.12);
+  --orb3: rgba(255,107,157,0.1);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background orbs */
+.orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.orb { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.7; animation: drift 18s ease-in-out infinite alternate; }
+.orb1 { width: 600px; height: 600px; background: var(--orb1); top: -150px; left: -100px; animation-delay: 0s; }
+.orb2 { width: 500px; height: 500px; background: var(--orb2); top: 30%; right: -150px; animation-delay: -6s; }
+.orb3 { width: 400px; height: 400px; background: var(--orb3); bottom: -100px; left: 30%; animation-delay: -12s; }
+@keyframes drift { from { transform: translate(0,0) scale(1); } to { transform: translate(40px,30px) scale(1.07); } }
+
+/* Header */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(7,8,15,0.6);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 0 32px; height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-mark {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent1), var(--accent2));
+  display: flex; align-items: center; justify-content: center; font-size: 17px;
+  box-shadow: 0 0 20px rgba(124,111,255,0.4);
+}
+.logo-text {
+  font-size: 15px; font-weight: 700; letter-spacing: -0.3px;
+  background: linear-gradient(90deg, #fff 30%, var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 1px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.pill-badge {
+  padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  background: linear-gradient(90deg, rgba(124,111,255,0.2), rgba(62,207,207,0.2));
+  border: 1px solid rgba(124,111,255,0.3); color: var(--accent2); letter-spacing: 0.3px;
+}
+.header-btn {
+  padding: 8px 16px; border-radius: 10px; font-size: 12px; font-weight: 600;
+  background: var(--glass); border: 1px solid var(--glass-border); color: var(--text);
+  cursor: pointer; transition: all 0.2s; backdrop-filter: blur(12px);
+}
+.header-btn:hover { background: var(--glass-hover); border-color: rgba(255,255,255,0.15); }
+
+/* Stats */
+.stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; padding: 20px 32px 0; }
+.stat-glass {
+  background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border); border-radius: 16px; padding: 18px 20px;
+  display: flex; align-items: center; gap: 14px; transition: all 0.3s;
+}
+.stat-glass:hover { background: var(--glass-hover); transform: translateY(-1px); }
+.stat-icon-wrap { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.stat-val { font-size: 26px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+.stat-lbl { font-size: 11px; color: var(--muted); margin-top: 3px; letter-spacing: 0.2px; }
+
+/* Nav */
+.nav-wrap { padding: 16px 32px 0; }
+.nav-tabs {
+  display: inline-flex; gap: 2px;
+  background: var(--glass); backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border); border-radius: 14px; padding: 4px;
+}
+.nav-tab { padding: 8px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; transition: all 0.25s; }
+.nav-tab.active {
+  background: linear-gradient(135deg, rgba(124,111,255,0.3), rgba(62,207,207,0.2));
+  color: #fff; border: 1px solid rgba(124,111,255,0.3); box-shadow: 0 2px 12px rgba(124,111,255,0.2);
+}
+.nav-tab:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.04); }
+
+/* Layout */
+.layout { display: grid; grid-template-columns: 1fr 300px; gap: 16px; padding: 16px 32px 32px; position: relative; z-index: 1; }
+
+/* Drop zone */
+.upload-wrap { display: flex; flex-direction: column; gap: 16px; }
+.drop-zone {
+  border: 1.5px dashed rgba(124,111,255,0.3); border-radius: 24px; padding: 56px 32px;
+  text-align: center; cursor: pointer; position: relative; overflow: hidden;
+  background: rgba(124,111,255,0.03); transition: all 0.35s; backdrop-filter: blur(12px);
+}
+.drop-zone::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(124,111,255,0.1) 0%, transparent 70%); pointer-events: none;
+}
+.drop-zone:hover, .drop-zone.over { border-color: var(--accent1); background: rgba(124,111,255,0.07); box-shadow: 0 0 40px rgba(124,111,255,0.15); }
+.drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop-icon {
+  width: 72px; height: 72px; border-radius: 20px; margin: 0 auto 20px;
+  background: linear-gradient(135deg, rgba(124,111,255,0.2), rgba(62,207,207,0.15));
+  border: 1px solid rgba(124,111,255,0.25); display: flex; align-items: center; justify-content: center;
+  font-size: 30px; box-shadow: 0 8px 32px rgba(124,111,255,0.2);
+}
+.drop-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px; }
+.drop-sub { font-size: 13px; color: var(--muted); }
+.file-chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+.file-chip { padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); color: var(--muted); }
+
+/* Processing */
+.processing-card { border-radius: 24px; padding: 48px 32px; text-align: center; background: var(--glass); backdrop-filter: blur(24px); border: 1px solid var(--glass-border); }
+.loader-ring { width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 20px; border: 2px solid rgba(255,255,255,0.06); border-top-color: var(--accent1); animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.process-label { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.process-sub { font-size: 12px; color: var(--muted); }
+.shimmer-bar { height: 3px; border-radius: 3px; max-width: 200px; margin: 20px auto 0; background: linear-gradient(90deg, transparent, var(--accent1), var(--accent2), transparent); background-size: 200%; animation: shimmer 1.5s linear infinite; }
+@keyframes shimmer { to { background-position: 200% 0; } }
+
+/* Result card */
+.result-card { border-radius: 24px; overflow: hidden; background: var(--glass); backdrop-filter: blur(24px); border: 1px solid var(--glass-border); }
+.result-hero {
+  padding: 28px 28px 20px;
+  background: linear-gradient(135deg, rgba(124,111,255,0.1) 0%, rgba(62,207,207,0.06) 100%);
+  border-bottom: 1px solid var(--glass-border); position: relative; overflow: hidden;
+}
+.result-hero::before {
+  content: ''; position: absolute; top: -40px; right: -40px; width: 200px; height: 200px;
+  border-radius: 50%; background: radial-gradient(circle, rgba(124,111,255,0.15), transparent 70%); pointer-events: none;
+}
+.result-doc-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 10px; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; backdrop-filter: blur(8px); letter-spacing: 0.2px; }
+.tag-type { background: rgba(124,111,255,0.2); border: 1px solid rgba(124,111,255,0.35); color: #b8b0ff; }
+.tag-pos { background: rgba(62,207,130,0.15); border: 1px solid rgba(62,207,130,0.3); color: #5df5a0; }
+.tag-neu { background: rgba(124,111,255,0.12); border: 1px solid rgba(124,111,255,0.25); color: #a8a0ff; }
+.tag-neg { background: rgba(255,107,107,0.15); border: 1px solid rgba(255,107,107,0.3); color: #ff9090; }
+.tag-file { background: rgba(255,255,255,0.07); border: 1px solid var(--glass-border); color: var(--muted); }
+.conf-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.conf-track { flex: 1; max-width: 140px; height: 3px; border-radius: 3px; background: rgba(255,255,255,0.08); }
+.conf-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent1), var(--accent2)); box-shadow: 0 0 8px rgba(62,207,207,0.5); }
+.conf-label { font-size: 11px; color: var(--muted); }
+.new-btn { position: absolute; top: 20px; right: 20px; padding: 7px 14px; border-radius: 9px; font-size: 12px; font-weight: 600; background: rgba(255,255,255,0.07); border: 1px solid var(--glass-border); color: var(--muted); cursor: pointer; transition: all 0.2s; }
+.new-btn:hover { color: var(--text); background: rgba(255,255,255,0.1); }
+
+/* Sub-tabs */
+.sub-tabs { display: flex; gap: 0; padding: 0 8px; border-bottom: 1px solid var(--glass-border); }
+.sub-tab { padding: 12px 16px; font-size: 12px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.sub-tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+.sub-tab:hover:not(.active) { color: var(--text); }
+
+/* Content body */
+.result-body { padding: 24px 28px; }
+.section-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+.summary-p { font-size: 14px; line-height: 1.75; color: rgba(200,205,255,0.75); }
+
+/* Metrics */
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 10px; }
+.metric-glass { background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 14px; padding: 16px; transition: all 0.2s; }
+.metric-glass:hover { background: rgba(255,255,255,0.05); transform: translateY(-1px); }
+.m-val { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: var(--accent2); }
+.m-unit { font-size: 11px; color: var(--muted); }
+.m-lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.m-trend-up { color: #5df5a0; font-size: 12px; }
+.m-trend-down { color: #ff9090; font-size: 12px; }
+
+/* Fields */
+.fields-list { display: flex; flex-direction: column; }
+.field-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 12px; }
+.field-row:last-child { border-bottom: none; }
+.field-key { font-size: 12px; color: var(--muted); min-width: 40%; }
+.field-val { font-size: 13px; font-weight: 500; flex: 1; }
+.copy-field { width: 24px; height: 24px; border-radius: 6px; font-size: 11px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; flex-shrink: 0; }
+.field-row:hover .copy-field { opacity: 1; }
+
+/* Insights */
+.insight-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; line-height: 1.6; color: rgba(200,205,255,0.75); }
+.insight-item:last-child { border-bottom: none; }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+.dot-teal { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+.dot-red { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); }
+
+/* Charts */
+.charts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 12px; }
+.chart-glass { background: rgba(255,255,255,0.025); border: 1px solid var(--glass-border); border-radius: 16px; padding: 16px; backdrop-filter: blur(12px); }
+.chart-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 12px; }
+.chart-wrap { position: relative; height: 180px; }
+
+/* Visuals */
+.gen-btn { padding: 12px 24px; border-radius: 14px; font-size: 13px; font-weight: 700; background: linear-gradient(135deg, var(--accent1), var(--accent2)); border: none; color: #fff; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 24px rgba(124,111,255,0.35); display: flex; align-items: center; gap: 8px; }
+.gen-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,111,255,0.45); }
+.gen-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.panels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px,1fr)); gap: 14px; }
+.panel-glass { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 18px; overflow: hidden; transition: all 0.3s; }
+.panel-glass:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); border-color: rgba(124,111,255,0.25); }
+.panel-top { padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--glass-border); }
+.panel-name { font-size: 11px; font-weight: 600; color: var(--muted); }
+.panel-dl-btn { padding: 4px 10px; border-radius: 7px; font-size: 10px; font-weight: 700; background: rgba(124,111,255,0.15); border: 1px solid rgba(124,111,255,0.25); color: var(--accent1); cursor: pointer; transition: all 0.2s; }
+.panel-dl-btn:hover { background: rgba(124,111,255,0.25); }
+.panel-img { width: 100%; display: block; }
+.panel-empty { padding: 56px 24px; text-align: center; color: var(--muted); }
+.panel-empty-icon { font-size: 36px; margin-bottom: 10px; }
+.panel-empty-txt { font-size: 12px; }
+
+/* Actions */
+.action-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+.act-btn { padding: 10px 18px; border-radius: 12px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; text-decoration: none; border: none; }
+.act-primary { background: linear-gradient(135deg, rgba(124,111,255,0.25), rgba(62,207,207,0.2)); border: 1px solid rgba(124,111,255,0.3) !important; color: #fff; }
+.act-primary:hover { background: linear-gradient(135deg, rgba(124,111,255,0.4), rgba(62,207,207,0.3)); }
+.act-ghost { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border) !important; color: var(--muted); }
+.act-ghost:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+
+/* History */
+.search-glass { background: var(--glass); backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.search-glass input { background: none; border: none; outline: none; color: var(--text); font-size: 13px; flex: 1; }
+.search-glass input::placeholder { color: var(--muted); }
+.hist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.hist-table th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--glass-border); }
+.hist-table td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+.hist-table tr:hover td { background: rgba(255,255,255,0.03); cursor: pointer; }
+.fn-cell { font-weight: 500; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Analytics */
+.analytics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 14px; }
+
+/* Sidebar */
+.sidebar-card { background: var(--glass); backdrop-filter: blur(24px); border: 1px solid var(--glass-border); border-radius: 20px; overflow: hidden; max-height: calc(100vh - 220px); overflow-y: auto; }
+.sidebar-head { padding: 14px 18px; border-bottom: 1px solid var(--glass-border); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.sidebar-search { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.sidebar-search input { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px 12px; color: var(--text); font-size: 12px; outline: none; transition: border-color 0.2s; }
+.sidebar-search input:focus { border-color: rgba(124,111,255,0.4); }
+.hist-item { padding: 12px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); cursor: pointer; transition: background 0.15s; }
+.hist-item:hover { background: rgba(255,255,255,0.04); }
+.hist-item:last-child { border-bottom: none; }
+.hi-name { font-size: 12px; font-weight: 500; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hi-meta { font-size: 10px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.hi-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+/* Toast */
+.toast-stack { position: fixed; bottom: 28px; right: 28px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast-item { background: rgba(15,17,30,0.9); backdrop-filter: blur(24px); border: 1px solid var(--glass-border); border-left: 2px solid var(--accent2); padding: 12px 18px; border-radius: 12px; font-size: 12px; font-weight: 500; max-width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); animation: toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+.toast-item.error { border-left-color: var(--accent3); }
+.toast-item.success { border-left-color: #5df5a0; }
+@keyframes toastIn { from { transform: translateX(80px) scale(0.9); opacity: 0; } to { transform: none; opacity: 1; } }
+</style>
+</head>
+<body x-data="app()" x-init="init()">
+
+<div class="orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
+
+<div class="toast-stack">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast-item" :class="t.type" x-text="t.msg"></div>
+  </template>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">📊</div>
+    <div>
+      <div class="logo-text">Visual Report Builder</div>
+      <div class="logo-sub">Document Intelligence Platform</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="pill-badge">Visual Report Builder</span>
+    <button class="header-btn" @click="exportCSV()">↓ Export CSV</button>
+  </div>
+</header>
+
+<div class="stats-row" style="position:relative;z-index:1">
+  <div class="stat-glass">
+    <div class="stat-icon-wrap" style="background:rgba(62,207,207,0.12)">📄</div>
+    <div>
+      <div class="stat-val" style="background:linear-gradient(90deg,var(--accent2),#fff);-webkit-background-clip:text;-webkit-text-fill-color:transparent" x-text="stats.today||0"></div>
+      <div class="stat-lbl">Processed Today</div>
+    </div>
+  </div>
+  <div class="stat-glass">
+    <div class="stat-icon-wrap" style="background:rgba(255,107,157,0.12)">⚠️</div>
+    <div>
+      <div class="stat-val" style="background:linear-gradient(90deg,var(--accent3),#ffb3cc);-webkit-background-clip:text;-webkit-text-fill-color:transparent" x-text="stats.flagged||0"></div>
+      <div class="stat-lbl">Flagged Reports</div>
+    </div>
+  </div>
+  <div class="stat-glass">
+    <div class="stat-icon-wrap" style="background:rgba(124,111,255,0.12)">🗂️</div>
+    <div>
+      <div class="stat-val" style="background:linear-gradient(90deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent" x-text="stats.types_seen||0"></div>
+      <div class="stat-lbl">Doc Types Seen</div>
+    </div>
+  </div>
+  <div class="stat-glass">
+    <div class="stat-icon-wrap" style="background:rgba(255,169,92,0.12)">✨</div>
+    <div>
+      <div class="stat-val" style="background:linear-gradient(90deg,var(--accent4),#ffe0b2);-webkit-background-clip:text;-webkit-text-fill-color:transparent" x-text="stats.total||0"></div>
+      <div class="stat-lbl">Total Reports</div>
+    </div>
+  </div>
+</div>
+
+<div class="nav-wrap" style="position:relative;z-index:1">
+  <div class="nav-tabs">
+    <div class="nav-tab" :class="{active:tab==='upload'}" @click="tab='upload'">↑ Upload &amp; Analyze</div>
+    <div class="nav-tab" :class="{active:tab==='history'}" @click="tab='history';loadHistory()">≡ History</div>
+    <div class="nav-tab" :class="{active:tab==='analytics'}" @click="tab='analytics';loadAnalytics()">↗ Analytics</div>
+  </div>
+</div>
+
+<div class="layout">
+  <div style="min-width:0">
+
+    <!-- UPLOAD TAB -->
+    <div x-show="tab==='upload'" class="upload-wrap">
+      <div x-show="!report && !loading">
+        <!-- Mode toggle -->
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button @click="bulkMode=false" :class="!bulkMode?'nav-tab active':'nav-tab'" style="font-size:12px;padding:7px 16px">Single</button>
+          <button @click="bulkMode=true" :class="bulkMode?'nav-tab active':'nav-tab'" style="font-size:12px;padding:7px 16px">Bulk Upload</button>
+        </div>
+
+        <!-- Single upload -->
+        <div x-show="!bulkMode">
+          <div class="drop-zone" :class="{over:dragging}"
+               @dragover.prevent="dragging=true" @dragleave="dragging=false" @drop.prevent="onDrop($event)">
+            <input type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,.docx,.csv" @change="onFile($event.target.files[0])"/>
+            <div class="drop-icon">📂</div>
+            <div class="drop-title">Drop your document</div>
+            <div class="drop-sub">or click to browse files</div>
+            <div class="file-chips">
+              <span class="file-chip">PDF</span><span class="file-chip">DOCX</span>
+              <span class="file-chip">CSV</span><span class="file-chip">TXT</span>
+              <span class="file-chip">PNG</span><span class="file-chip">JPG</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bulk upload -->
+        <div x-show="bulkMode">
+          <div class="drop-zone" :class="{over:dragging}"
+               @dragover.prevent="dragging=true" @dragleave="dragging=false" @drop.prevent="onDropBulk($event)">
+            <input type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,.docx,.csv" multiple @change="onBulkSelect($event.target.files)"/>
+            <div class="drop-icon">📦</div>
+            <div class="drop-title">Drop multiple files</div>
+            <div class="drop-sub">or click to select several at once</div>
+            <div class="file-chips">
+              <span class="file-chip">PDF</span><span class="file-chip">DOCX</span>
+              <span class="file-chip">CSV</span><span class="file-chip">TXT</span>
+              <span class="file-chip">PNG</span><span class="file-chip">JPG</span>
+            </div>
+          </div>
+
+          <!-- Bulk queue -->
+          <div x-show="bulkQueue.length" style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)" x-text="`${bulkQueue.length} files queued`"></span>
+              <button class="act-btn act-primary" @click="runBulk()" :disabled="bulkRunning" style="padding:7px 16px;font-size:12px">
+                <span x-show="!bulkRunning">▶ Process All</span>
+                <span x-show="bulkRunning">Processing...</span>
+              </button>
+            </div>
+            <template x-for="(item,idx) in bulkQueue" :key="idx">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--glass);border:1px solid var(--glass-border);border-radius:12px">
+                <span style="font-size:16px" x-text="item.status==='done'?'✅':item.status==='error'?'❌':item.status==='processing'?'⏳':'📄'"></span>
+                <span style="font-size:12px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="item.name"></span>
+                <span style="font-size:11px;color:var(--muted)" x-text="item.status==='done'?item.docType:item.status"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <div x-show="loading" class="processing-card">
+        <div class="loader-ring"></div>
+        <div class="process-label" x-text="loadMsg"></div>
+        <div class="process-sub" x-text="loadQuote"></div>
+        <div class="shimmer-bar"></div>
+      </div>
+
+      <div x-show="report && !loading" class="result-card">
+        <div class="result-hero">
+          <button class="new-btn" @click="report=null;visuals=[]">✕ New</button>
+          <div class="result-doc-title" x-text="report?.title||report?.filename"></div>
+          <div class="tags">
+            <span class="tag tag-type" x-text="report?.document_type"></span>
+            <span class="tag" :class="sClass(report?.sentiment)" x-text="report?.sentiment"></span>
+            <span class="tag tag-file" x-text="(report?.file_type||'').toUpperCase()"></span>
+          </div>
+          <div class="conf-row">
+            <div class="conf-track"><div class="conf-fill" :style="`width:${(report?.confidence||0)*100}%`"></div></div>
+            <span class="conf-label" x-text="`${Math.round((report?.confidence||0)*100)}% confidence`"></span>
+          </div>
+        </div>
+
+        <div class="sub-tabs">
+          <div class="sub-tab" :class="{active:rtab==='summary'}" @click="rtab='summary'">Summary</div>
+          <div class="sub-tab" :class="{active:rtab==='metrics'}" @click="rtab='metrics'">Metrics</div>
+          <div class="sub-tab" :class="{active:rtab==='fields'}" @click="rtab='fields'">Fields</div>
+          <div class="sub-tab" :class="{active:rtab==='charts'}" @click="rtab='charts';renderResultCharts()">Dashboard</div>
+          <div class="sub-tab" :class="{active:rtab==='visuals'}" @click="rtab='visuals'">🎨 Visuals</div>
+        </div>
+
+        <div class="result-body" x-show="rtab==='summary'">
+          <div class="section-lbl">Summary</div>
+          <p class="summary-p" x-text="report?.summary"></p>
+          <div style="margin-top:24px" x-show="report?.insights?.length">
+            <div class="section-lbl">Key Insights</div>
+            <template x-for="ins in (report?.insights||[])">
+              <div class="insight-item"><div class="dot dot-teal"></div><span x-text="ins"></span></div>
+            </template>
+          </div>
+          <div style="margin-top:20px" x-show="report?.risk_flags?.length">
+            <div class="section-lbl" style="color:rgba(255,107,157,0.8)">⚠ Risk Flags</div>
+            <template x-for="rf in (report?.risk_flags||[])">
+              <div class="insight-item" style="color:rgba(255,180,180,0.7)"><div class="dot dot-red"></div><span x-text="rf"></span></div>
+            </template>
+          </div>
+          <div class="action-bar">
+            <a class="act-btn act-primary" :href="`/api/export/pdf/${report?.id}`" target="_blank">↓ Download PDF</a>
+            <button class="act-btn act-ghost" @click="copyJSON()">{ } Copy JSON</button>
+          </div>
+        </div>
+
+        <div class="result-body" x-show="rtab==='metrics'">
+          <div class="metrics-grid">
+            <template x-for="m in (report?.key_metrics||[])">
+              <div class="metric-glass">
+                <div style="display:flex;justify-content:space-between">
+                  <span class="m-val" x-text="m.value"></span>
+                  <span :class="m.trend==='up'?'m-trend-up':'m-trend-down'" x-show="m.trend&&m.trend!=='neutral'" x-text="m.trend==='up'?'↑':'↓'"></span>
+                </div>
+                <div class="m-unit" x-text="m.unit||''"></div>
+                <div class="m-lbl" x-text="m.label"></div>
+              </div>
+            </template>
+          </div>
+          <div x-show="!report?.key_metrics?.length" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">No numeric metrics found</div>
+        </div>
+
+        <div class="result-body" x-show="rtab==='fields'">
+          <div class="fields-list">
+            <template x-for="[k,v] in Object.entries(report?.key_fields||{})">
+              <div class="field-row">
+                <div class="field-key" x-text="k"></div>
+                <div class="field-val" x-text="v"></div>
+                <button class="copy-field" @click="copyText(String(v))">⎘</button>
+              </div>
+            </template>
+          </div>
+          <div x-show="!Object.keys(report?.key_fields||{}).length" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">No structured fields extracted</div>
+        </div>
+
+        <div class="result-body" x-show="rtab==='charts'">
+          <div class="charts-grid">
+            <div class="chart-glass" x-show="report?.chart_data?.bar?.values?.length">
+              <div class="chart-lbl" x-text="report?.chart_data?.bar?.title||'Bar Chart'"></div>
+              <div class="chart-wrap"><canvas id="rBar"></canvas></div>
+            </div>
+            <div class="chart-glass" x-show="report?.chart_data?.pie?.values?.length">
+              <div class="chart-lbl" x-text="report?.chart_data?.pie?.title||'Distribution'"></div>
+              <div class="chart-wrap"><canvas id="rPie"></canvas></div>
+            </div>
+            <div class="chart-glass" x-show="report?.chart_data?.line?.values?.length">
+              <div class="chart-lbl" x-text="report?.chart_data?.line?.title||'Trend'"></div>
+              <div class="chart-wrap"><canvas id="rLine"></canvas></div>
+            </div>
+          </div>
+          <div x-show="!report?.chart_data?.bar?.values?.length&&!report?.chart_data?.pie?.values?.length&&!report?.chart_data?.line?.values?.length" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">No chart data for this document type</div>
+        </div>
+
+        <div class="result-body" x-show="rtab==='visuals'">
+          <div class="section-lbl">Visual Panels</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Generate 3 visual infographic panels from your document — summary card, insights panel, and scorecard.</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:20px">
+            <button class="gen-btn" @click="genVisuals()" :disabled="generating">
+              <span x-show="!generating">✦ Generate Visual Panels</span>
+              <span x-show="generating" style="display:flex;align-items:center;gap:8px">
+                <span style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block"></span>
+                Generating...
+              </span>
+            </button>
+            <a class="act-btn act-primary" :href="`/api/export/pdf/${report?.id}`" target="_blank">↓ Download PDF</a>
+          </div>
+          <div class="panels-grid">
+            <template x-for="p in (visuals.length ? visuals : [{panel:1},{panel:2},{panel:3}])">
+              <div class="panel-glass">
+                <div class="panel-top">
+                  <span class="panel-name" x-text="['Summary Infographic','Insights Panel','Scorecard'][p.panel-1]"></span>
+                  <button class="panel-dl-btn" x-show="p.b64" @click="dlPanel(p)">↓ Save</button>
+                </div>
+                <img x-show="p.b64" :src="`data:image/png;base64,${p.b64}`" class="panel-img"/>
+                <div class="panel-empty" x-show="!p.b64">
+                  <div class="panel-empty-icon" x-text="visuals.length&&p.error?'⚠️':'🎨'"></div>
+                  <div class="panel-empty-txt" x-text="p.error||'Click Generate to create'"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div x-show="tab==='history'">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+        <div class="search-glass" style="flex:1;min-width:200px">
+          <span style="color:var(--muted);font-size:14px">🔍</span>
+          <input type="text" placeholder="Search by filename, type, sentiment..." x-model="hSearch"/>
+        </div>
+        <button class="act-btn act-ghost" @click="exportCSV()">↓ CSV</button>
+      </div>
+      <div class="result-card" x-show="!hLoading && filteredHistory.length">
+        <table class="hist-table">
+          <thead><tr><th>Filename</th><th>Type</th><th>Sentiment</th><th>Confidence</th><th>Risks</th><th>Date</th><th></th></tr></thead>
+          <tbody>
+            <template x-for="r in filteredHistory" :key="r.id">
+              <tr @click="openReport(r)">
+                <td><div class="fn-cell" x-text="r.filename"></div></td>
+                <td><span class="tag tag-type" x-text="r.document_type"></span></td>
+                <td><span class="tag" :class="sClass(r.sentiment)" x-text="r.sentiment"></span></td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <div class="conf-track" style="max-width:50px"><div class="conf-fill" :style="`width:${(r.confidence||0)*100}%`"></div></div>
+                    <span style="font-size:11px;color:var(--muted)" x-text="`${Math.round((r.confidence||0)*100)}%`"></span>
+                  </div>
+                </td>
+                <td><span x-show="r.risk_flags?.length" style="color:var(--accent3);font-size:12px">⚠ <span x-text="r.risk_flags?.length"></span></span><span x-show="!r.risk_flags?.length" style="color:var(--muted)">—</span></td>
+                <td style="color:var(--muted);font-size:11px" x-text="r.created_at?.slice(0,10)"></td>
+                <td @click.stop><a :href="`/api/export/pdf/${r.id}`" target="_blank" class="act-btn act-ghost" style="padding:5px 10px;font-size:11px">PDF</a></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+      <div x-show="!hLoading && !filteredHistory.length" style="text-align:center;padding:64px;color:var(--muted)">
+        <div style="font-size:40px;margin-bottom:12px">📋</div>
+        <div style="font-weight:600;color:var(--text);margin-bottom:4px">No reports yet</div>
+        <div style="font-size:13px">Upload a document to get started</div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS TAB -->
+    <div x-show="tab==='analytics'">
+      <div x-show="aLoading" style="text-align:center;padding:64px"><div class="loader-ring" style="margin:0 auto"></div></div>
+      <div class="analytics-grid" x-show="!aLoading">
+        <div class="chart-glass"><div class="chart-lbl">Daily Volume · 14 days</div><div class="chart-wrap"><canvas id="aDaily"></canvas></div></div>
+        <div class="chart-glass"><div class="chart-lbl">By Document Type</div><div class="chart-wrap"><canvas id="aType"></canvas></div></div>
+        <div class="chart-glass"><div class="chart-lbl">Sentiment Breakdown</div><div class="chart-wrap"><canvas id="aSent"></canvas></div></div>
+        <div class="chart-glass"><div class="chart-lbl">Avg Confidence by Type</div><div class="chart-wrap"><canvas id="aConf"></canvas></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sidebar -->
+  <div>
+    <div class="sidebar-card">
+      <div class="sidebar-head"><span>📁</span> Recent Reports</div>
+      <div class="sidebar-search"><input type="text" placeholder="Quick filter..." x-model="sSearch"/></div>
+      <div x-show="filteredSidebar.length===0" style="padding:24px;text-align:center;color:var(--muted);font-size:12px">No reports yet</div>
+      <template x-for="r in filteredSidebar" :key="r.id">
+        <div class="hist-item" @click="openReport(r)">
+          <div class="hi-name" x-text="r.filename"></div>
+          <div class="hi-meta">
+            <span x-text="r.document_type"></span>
+            <div class="hi-dot" :style="`background:${r.sentiment==='Positive'?'#5df5a0':r.sentiment==='Negative'?'#ff9090':'#a8a0ff'}`"></div>
+            <span x-text="r.sentiment"></span>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+
+<script>
+const C=['#7c6fff','#3ecfcf','#ff6b9d','#ffa95c','#5df5a0','#c084fc','#38bdf8','#fb923c'];
+let rCharts={},aCharts={};
+
+function chartCfg(){
+  return{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{ticks:{color:'rgba(200,205,255,0.4)',font:{size:10,family:'Inter'}},grid:{color:'rgba(255,255,255,0.04)'}},
+      y:{ticks:{color:'rgba(200,205,255,0.4)',font:{size:10,family:'Inter'}},grid:{color:'rgba(255,255,255,0.04)'}}
+    }
+  };
+}
+
+function app(){
+  return{
+    tab:'upload',rtab:'summary',
+    bulkMode:false, bulkQueue:[], bulkRunning:false,
+    stats:{},toasts:[],
+    loading:false,loadMsg:'Reading your document...',
+    loadQuote:'',
+    quotes:[
+      '"Data is the new oil." — Clive Humby',
+      '"Without data, you\'re just another person with an opinion." — W. Edwards Deming',
+      '"The goal is to turn data into information, and information into insight." — Carly Fiorina',
+      '"In God we trust; all others bring data." — W. Edwards Deming',
+      '"Numbers have an important story to tell. They rely on you to give them a voice." — Stephen Few',
+      '"Torture the data, and it will confess to anything." — Ronald Coase',
+      '"Every document has a story. We\'re just reading between the lines."',
+      '"Your file is getting the VIP treatment. Hang tight."',
+    ],
+    dragging:false,
+    report:null,visuals:[],generating:false,
+    hSearch:'',sSearch:'',
+    hLoading:false,aLoading:false,
+    historyReports:[],sidebarHistory:[],
+
+    get filteredHistory(){
+      if(!this.hSearch) return this.historyReports;
+      const q=this.hSearch.toLowerCase();
+      return this.historyReports.filter(r=>r.filename?.toLowerCase().includes(q)||r.document_type?.toLowerCase().includes(q)||r.sentiment?.toLowerCase().includes(q));
+    },
+    get filteredSidebar(){
+      const list=this.sSearch?this.sidebarHistory.filter(r=>r.filename?.toLowerCase().includes(this.sSearch.toLowerCase())):this.sidebarHistory;
+      return list.slice(0,25);
+    },
+
+    async init(){ await this.loadStats(); await this.loadSidebar(); },
+    async loadStats(){ try{ const r=await fetch('/api/stats'); this.stats=await r.json(); }catch{} },
+    async loadSidebar(){
+      try{ const r=await fetch('/api/reports?per_page=30'); const d=await r.json(); this.sidebarHistory=d.reports||[]; }catch{}
+    },
+    async loadHistory(){
+      this.hLoading=true;
+      try{ const r=await fetch('/api/reports?per_page=100'); const d=await r.json(); this.historyReports=d.reports||[]; }catch{ this.toast('Failed to load history','error'); }
+      this.hLoading=false;
+    },
+    async loadAnalytics(){
+      this.aLoading=true;
+      try{ const r=await fetch('/api/stats'); const d=await r.json(); await this.$nextTick(); this.renderAnalytics(d); }catch{ this.toast('Failed to load analytics','error'); }
+      this.aLoading=false;
+    },
+
+    renderAnalytics(d){
+      Object.values(aCharts).forEach(c=>c?.destroy()); aCharts={};
+      if(d.daily_trend?.length){ const ctx=document.getElementById('aDaily'); if(ctx) aCharts.daily=new Chart(ctx,{type:'line',data:{labels:d.daily_trend.map(x=>x.day?.slice(5)),datasets:[{data:d.daily_trend.map(x=>x.cnt),borderColor:'#3ecfcf',backgroundColor:'rgba(62,207,207,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#3ecfcf',pointRadius:3}]},options:{...chartCfg(),plugins:{legend:{display:false}}}}); }
+      if(d.by_type?.length){ const ctx=document.getElementById('aType'); if(ctx) aCharts.type=new Chart(ctx,{type:'bar',data:{labels:d.by_type.map(x=>x.document_type),datasets:[{data:d.by_type.map(x=>x.cnt),backgroundColor:C,borderRadius:6}]},options:chartCfg()}); }
+      if(d.sentiment_breakdown?.length){ const ctx=document.getElementById('aSent'); const sc={Positive:'#5df5a0',Neutral:'#7c6fff',Negative:'#ff6b9d'}; if(ctx) aCharts.sent=new Chart(ctx,{type:'doughnut',data:{labels:d.sentiment_breakdown.map(x=>x.sentiment),datasets:[{data:d.sentiment_breakdown.map(x=>x.cnt),backgroundColor:d.sentiment_breakdown.map(x=>sc[x.sentiment]||'#7c6fff'),borderWidth:0,hoverOffset:4}]},options:{...chartCfg(),cutout:'65%',plugins:{legend:{position:'right',labels:{color:'rgba(200,205,255,0.5)',font:{size:11,family:'Inter'}}}}}}); }
+      if(d.confidence_by_type?.length){ const ctx=document.getElementById('aConf'); if(ctx) aCharts.conf=new Chart(ctx,{type:'bar',data:{labels:d.confidence_by_type.map(x=>x.document_type),datasets:[{data:d.confidence_by_type.map(x=>Math.round((x.avg_conf||0)*100)),backgroundColor:'rgba(124,111,255,0.5)',borderRadius:6}]},options:{...chartCfg(),scales:{...chartCfg().scales,y:{...chartCfg().scales.y,max:100}}}}); }
+    },
+
+    renderResultCharts(){
+      Object.values(rCharts).forEach(c=>c?.destroy()); rCharts={};
+      const cd=this.report?.chart_data; if(!cd) return;
+      setTimeout(()=>{
+        if(cd.bar?.values?.length){ const ctx=document.getElementById('rBar'); if(ctx) rCharts.bar=new Chart(ctx,{type:'bar',data:{labels:cd.bar.labels,datasets:[{data:cd.bar.values,backgroundColor:C,borderRadius:6}]},options:chartCfg()}); }
+        if(cd.pie?.values?.length){ const ctx=document.getElementById('rPie'); if(ctx) rCharts.pie=new Chart(ctx,{type:'doughnut',data:{labels:cd.pie.labels,datasets:[{data:cd.pie.values,backgroundColor:C,borderWidth:0,hoverOffset:4}]},options:{...chartCfg(),cutout:'60%',plugins:{legend:{position:'right',labels:{color:'rgba(200,205,255,0.5)',font:{size:11}}}}}}); }
+        if(cd.line?.values?.length){ const ctx=document.getElementById('rLine'); if(ctx) rCharts.line=new Chart(ctx,{type:'line',data:{labels:cd.line.labels,datasets:[{data:cd.line.values,borderColor:'#3ecfcf',backgroundColor:'rgba(62,207,207,0.08)',fill:true,tension:0.4}]},options:chartCfg()}); }
+      },60);
+    },
+
+    async onFile(file){
+      if(!file) return;
+      this.report=null; this.visuals=[];
+      this.loading=true;
+      this.loadMsg='Reading your document...';
+      this.loadQuote=this.quotes[Math.floor(Math.random()*this.quotes.length)];
+      const fd=new FormData(); fd.append('file',file);
+      try{
+        setTimeout(()=>{ if(this.loading){ this.loadMsg='Extracting insights...'; this.loadQuote=this.quotes[Math.floor(Math.random()*this.quotes.length)]; } },2000);
+        const res=await fetch('/api/upload',{method:'POST',body:fd});
+        const data=await res.json();
+        if(!res.ok) throw new Error(data.error||'Upload failed');
+        this.report={id:data.id,filename:data.filename,...data.analysis};
+        this.rtab='summary';
+        this.toast('Document analyzed successfully','success');
+        await this.loadStats(); await this.loadSidebar();
+      }catch(e){ this.toast(e.message,'error'); }
+      this.loading=false;
+    },
+    onDrop(e){ this.dragging=false; const f=e.dataTransfer.files[0]; if(f) this.onFile(f); },
+    onDropBulk(e){ this.dragging=false; this.onBulkSelect(e.dataTransfer.files); },
+    onBulkSelect(files){
+      this.bulkQueue=[...files].map(f=>({name:f.name,file:f,status:'queued',docType:''}));
+    },
+    async runBulk(){
+      if(!this.bulkQueue.length||this.bulkRunning) return;
+      this.bulkRunning=true;
+      for(let i=0;i<this.bulkQueue.length;i++){
+        const item=this.bulkQueue[i];
+        if(item.status==='done') continue;
+        item.status='processing';
+        try{
+          const fd=new FormData(); fd.append('file',item.file);
+          const res=await fetch('/api/upload',{method:'POST',body:fd});
+          const data=await res.json();
+          if(!res.ok) throw new Error(data.error||'Failed');
+          item.status='done';
+          item.docType=data.analysis?.document_type||'Processed';
+        }catch(e){
+          item.status='error';
+          item.docType=e.message.slice(0,30);
+        }
+        this.bulkQueue=[...this.bulkQueue];
+      }
+      this.bulkRunning=false;
+      await this.loadStats(); await this.loadSidebar();
+      const done=this.bulkQueue.filter(i=>i.status==='done').length;
+      this.toast(`Processed ${done}/${this.bulkQueue.length} files`,'success');
+    },
+
+    async genVisuals(){
+      if(!this.report?.id) return;
+      this.generating=true;
+      try{
+        const res=await fetch(`/api/generate-visuals/${this.report.id}`,{method:'POST'});
+        const data=await res.json();
+        if(!res.ok) throw new Error(data.error||'Generation failed');
+        this.visuals=data.images||[];
+        const ok=this.visuals.filter(v=>v.b64).length;
+        this.toast(`Generated ${ok}/3 panels`,ok>0?'success':'error');
+      }catch(e){ this.toast(e.message,'error'); }
+      this.generating=false;
+    },
+
+    dlPanel(p){ const a=document.createElement('a'); a.href=`data:image/png;base64,${p.b64}`; a.download=`panel_${p.panel}.png`; a.click(); },
+    openReport(r){ this.report=r; this.rtab='summary'; this.visuals=[]; this.tab='upload'; window.scrollTo(0,0); },
+    exportCSV(){ window.open('/api/export/csv','_blank'); },
+    copyJSON(){ navigator.clipboard.writeText(JSON.stringify(this.report,null,2)); this.toast('JSON copied','success'); },
+    copyText(t){ navigator.clipboard.writeText(t); this.toast('Copied!','success'); },
+    sClass(s){ return{Positive:'tag-pos',Negative:'tag-neg',Neutral:'tag-neu'}[s]||'tag-neu'; },
+    toast(msg,type=''){ const id=Date.now(); this.toasts.push({id,msg,type}); setTimeout(()=>{ this.toasts=this.toasts.filter(t=>t.id!==id); },3500); }
+  };
+}
+</script>
+</body>
+</html>

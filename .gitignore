@@ -1,0 +1,20 @@
+# API keys - NEVER commit these
+.env
+*.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Database (auto-generated locally)
+*.db
+*.sqlite3
+
+# Generated report images (auto-generated)
+static/reports/*.png
+static/reports/*.jpg
+
+# OS files
+.DS_Store
+Thumbs.db
