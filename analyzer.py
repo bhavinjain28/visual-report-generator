@@ -5,13 +5,11 @@ import anthropic
 from dotenv import load_dotenv
 load_dotenv()
 
-_client = None
-
 def _get_client():
-    global _client
-    if _client is None:
-        _client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-    return _client
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY is not set")
+    return anthropic.Anthropic(api_key=api_key)
 
 SYSTEM_PROMPT = """You are a document intelligence and data analyst AI.
 Analyze the provided document and return ONLY valid JSON (no markdown, no code fences) matching this schema exactly:
