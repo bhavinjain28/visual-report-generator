@@ -4,6 +4,15 @@ import os
 import base64
 import json
 
+# Load secrets from Streamlit Cloud secrets manager if available,
+# otherwise fall back to .env file for local development
+try:
+    for key in ["ANTHROPIC_API_KEY", "HF_API_KEY"]:
+        if key in st.secrets and not os.environ.get(key):
+            os.environ[key] = st.secrets[key]
+except Exception:
+    pass  # Running locally without secrets — .env will be used
+
 from processor import extract
 from analyzer import analyze
 from gemini_gen import generate_visuals
