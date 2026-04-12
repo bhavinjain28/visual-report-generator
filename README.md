@@ -1,6 +1,6 @@
 # 📊 AI Visual Report Generator
 
-Upload any document and get a structured, visual analytical report in seconds — powered by Claude AI.
+Upload any document and get a structured, visual analytical report in seconds.
 
 **Live Demo:** [visual-report-generator.streamlit.app](https://visual-report-generator.streamlit.app/)
 
@@ -32,13 +32,13 @@ No configuration needed. Works with any document type.
 
 ## Features
 
-- **Multi-format input** — PDF, CSV, plain text, JPG, PNG
-- **Automatic metric extraction** — pulls out numbers, dates, names, and key fields without any setup
-- **Smart chart generation** — bar, donut, and line charts rendered only when relevant data is found
-- **Insight and risk detection** — surfaces what is working well and what needs attention
-- **Sentiment and confidence scoring** — shows document tone and extraction confidence at a glance
-- **PDF export** — download a clean report with one click
-- **Report history** — all past reports saved and accessible in session
+- **Multi-format input** - PDF, CSV, plain text, JPG, PNG
+- **Automatic metric extraction** - pulls out numbers, dates, names, and key fields without any setup
+- **Smart chart generation** - bar, donut, and line charts rendered only when relevant data is found
+- **Insight and risk detection** - surfaces what is working well and what needs attention
+- **Sentiment and confidence scoring** - shows document tone and extraction confidence at a glance
+- **PDF export** - download a clean report with one click
+- **Report history** - all past reports saved and accessible in session
 
 ---
 
@@ -117,5 +117,5 @@ visual-report-generator/
 
 ## Author
 
-**Bhavin Jain** — MS Data Science, Worcester Polytechnic Institute  
-[LinkedIn](https://linkedin.com/in/bhavin-jain-2804/) · [GitHub](https://github.com/bhavinjain28) · bjain2@wpi.edu
+**Bhavin Jain** 
+[LinkedIn](https://linkedin.com/in/bhavin-jain-2804/) · [GitHub](https://github.com/bhavinjain28) · bhavinjain28@icloud.com
