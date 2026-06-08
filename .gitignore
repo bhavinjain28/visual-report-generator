@@ -18,3 +18,4 @@ static/reports/*.jpg
 # OS files
 .DS_Store
 Thumbs.db
+"Claude API Key.txt" 
