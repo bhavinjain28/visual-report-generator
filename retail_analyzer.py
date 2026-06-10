@@ -95,7 +95,7 @@ def compute_retail_kpis(df: pd.DataFrame, column_map: dict) -> dict:
 
     if rev_col and date_col and date_col in df.columns:
         try:
-            df['_date'] = pd.to_datetime(df[date_col], errors='coerce', infer_datetime_format=True)
+            df['_date'] = pd.to_datetime(df[date_col], errors='coerce')
             df['_month'] = df['_date'].dt.to_period('M')
             monthly = df.groupby('_month')[rev_col].sum().sort_index()
             if len(monthly) >= 2:
@@ -262,3 +262,4 @@ Build a causal driver tree explaining this metric. Return ONLY valid JSON (no ma
             'confidence': 0.5,
             'monitoring_metrics': [],
         }
+                            

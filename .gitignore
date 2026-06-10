@@ -18,4 +18,9 @@ static/reports/*.jpg
 # OS files
 .DS_Store
 Thumbs.db
-"Claude API Key.txt" 
+
+# API key file - NEVER commit (no quotes; gitignore patterns do not use them)
+Claude API Key.txt
+
+# Streamlit secrets
+.streamlit/secrets.toml

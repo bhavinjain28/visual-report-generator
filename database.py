@@ -38,6 +38,11 @@ def init_db():
                 created_at TEXT DEFAULT (datetime('now'))
             )
         ''')
+        # Migration: store complete analysis JSON (industry intelligence fields etc.)
+        try:
+            conn.execute('ALTER TABLE reports ADD COLUMN full_analysis TEXT')
+        except sqlite3.OperationalError:
+            pass  # column already exists
         conn.commit()
 
 
@@ -47,8 +52,8 @@ def save_report(filename, file_type, file_size, analysis, extraction_method):
             INSERT INTO reports
             (filename, file_type, file_size, document_type, title, summary,
              key_metrics, key_fields, insights, risk_flags, sentiment, confidence,
-             chart_data, infographic_prompt, extraction_method, success)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             chart_data, infographic_prompt, extraction_method, success, full_analysis)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             filename,
             file_type,
@@ -65,7 +70,8 @@ def save_report(filename, file_type, file_size, analysis, extraction_method):
             json.dumps(analysis.get('chart_data', {})),
             analysis.get('infographic_prompt', ''),
             extraction_method,
-            0 if 'error' in analysis else 1
+            0 if 'error' in analysis else 1,
+            json.dumps(analysis)
         ))
         conn.commit()
         return cursor.lastrowid
@@ -171,4 +177,13 @@ def _deserialize(row):
                 row[field] = json.loads(row[field])
             except Exception:
                 row[field] = [] if field != 'key_fields' else {}
+    # Merge full analysis JSON (industry intelligence fields) if present
+    if row.get('full_analysis'):
+        try:
+            full = json.loads(row['full_analysis'])
+            for k, v in full.items():
+                row.setdefault(k, v)
+        except Exception:
+            pass
+        row.pop('full_analysis', None)
     return row
