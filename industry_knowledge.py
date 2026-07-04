@@ -311,6 +311,43 @@ INDUSTRY_PROFILES = {
         ),
         "recommended_charts": ["line (combined ratio trend)", "bar (claims by line)", "pie (premium mix)"],
     },
+    "facilities_services": {
+        "name": "Facilities Services & RFP Analysis",
+        "icon": "🧹",
+        "key_kpis": [
+            "Scope of work (services in/out)", "Cleanable square footage", "Facility count & locations",
+            "Shift coverage & staffing plan (FTE per sq ft)", "Contract term & option years",
+            "Estimated contract value / ceiling", "SLA response & inspection thresholds",
+            "Past-performance requirements (CPARS, references)", "Small-business set-aside / socioeconomic status",
+            "Wage determination (Davis-Bacon / SCA)", "Insurance & bonding requirements",
+            "Key personnel & staffing qualifications", "Transition-in / phase-in period",
+            "Liquidated damages & deduction schedule", "Green cleaning / LEED requirements",
+        ],
+        "benchmarks": (
+            "Janitorial pricing benchmarks (US, 2024): $0.05-$0.20 per sq ft per month for standard commercial; "
+            "$0.15-$0.30 for medical/lab; government contracts often at the lower end due to volume. "
+            "Standard cleaner productivity: 3,500-4,500 sq ft/hour for general office, 2,000-3,000 for restrooms/medical. "
+            "Typical contract term: 1 base year + 4 option years (federal), 3-5 years commercial. "
+            "SCA / Davis-Bacon prevailing wages apply to most federal facilities work — always priced separately. "
+            "Standard insurance: $1M general liability, $1M auto, workers' comp per state. "
+            "SLAs: 2-4 hour response for urgent, next-business-day for standard requests. "
+            "Past-performance requirements typically 3-5 references of similar scope/value within last 3-5 years."
+        ),
+        "risk_framework": (
+            "Watch for: unlimited or uncapped liability, one-sided indemnification, liquidated damages tied to "
+            "subjective quality scores, unclear scope boundaries ('other duties as assigned'), unfunded "
+            "transition/phase-in periods, key-personnel lock-in clauses, Davis-Bacon/SCA exposure not "
+            "reflected in pricing, aggressive small-business subcontracting targets, short response-time SLAs "
+            "without after-hours pricing, bonding/insurance requirements exceeding standard $1M, "
+            "ambiguous performance-based deductions, unrealistic staffing ratios implied by scope, "
+            "past-performance thresholds the bidder cannot meet, mandatory site visits missed."
+        ),
+        "recommended_charts": [
+            "bar (requirements by category: scope, admin, compliance)",
+            "pie (risk-flag distribution: pricing, legal, operational)",
+            "line (deadline timeline: questions due, proposal due, award)",
+        ],
+    },
     "general": {
         "name": "General Business",
         "icon": "📄",
@@ -355,6 +392,12 @@ INDUSTRY_ALIASES = {
     "food": "hospitality_food", "travel": "hospitality_food",
     "marketing": "marketing_media", "advertising": "marketing_media", "media": "marketing_media",
     "agency": "marketing_media",
+    "facilities": "facilities_services", "facility": "facilities_services",
+    "facilities services": "facilities_services", "facility services": "facilities_services",
+    "janitorial": "facilities_services", "custodial": "facilities_services",
+    "cleaning": "facilities_services", "building services": "facilities_services",
+    "building maintenance": "facilities_services", "property services": "facilities_services",
+    "grounds maintenance": "facilities_services", "landscaping services": "facilities_services",
 }
 
 

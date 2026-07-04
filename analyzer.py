@@ -39,10 +39,130 @@ def _parse_json(raw: str) -> dict:
     start, end = raw.find('{'), raw.rfind('}')
     if start != -1 and end > start:
         raw = raw[start:end + 1]
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Last-ditch: drop trailing commas, then try to auto-close
+        cleaned = re.sub(r',(\s*[}\]])', r'\1', raw)
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            return json.loads(_close_truncated_json(cleaned))
 
 
-def _build_content(extracted: dict, filename: str, instruction: str) -> list:
+def _close_truncated_json(raw: str) -> str:
+    """Salvage JSON cut off mid-structure by closing open braces/brackets/strings."""
+    # Walk the string tracking open containers, ignoring chars inside strings.
+    stack = []
+    in_str = False
+    escape = False
+    last_good = 0  # index of last char that's safe to truncate at
+    for i, ch in enumerate(raw):
+        if escape:
+            escape = False
+            continue
+        if ch == '\\' and in_str:
+            escape = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch in '{[':
+            stack.append('}' if ch == '{' else ']')
+        elif ch in '}]':
+            if stack:
+                stack.pop()
+        if not in_str and ch in '}],':
+            last_good = i + 1
+    # Truncate to the last safe boundary, drop dangling comma, then close.
+    out = raw[:last_good].rstrip().rstrip(',')
+    if in_str:
+        out += '"'
+    out += ''.join(reversed(stack))
+    return out
+
+
+TEXT_BUDGET = 60000  # chars sent to the deep-analysis pass
+FRONT_MATTER_CHARS = 8000  # always keep this much from the top (title, TOC, intro)
+
+# Keywords that mark high-signal paragraphs in RFPs/PWSs/contracts.
+# Grouped for readability; matched case-insensitively.
+_SIGNAL_TERMS = (
+    # Modal / requirement language
+    'shall', 'must', 'required', 'mandatory', 'contractor shall', 'government shall',
+    # Contract mechanics
+    'sla', 'service level', 'response time', 'deduction', 'penalty',
+    'liquidated damages', 'termination', 'default', 'cure period',
+    'option year', 'period of performance', 'transition', 'phase-in',
+    # Pricing signals
+    'wage', 'davis-bacon', 'sca ', 'prevailing wage', 'per hour', 'per sq ft',
+    'square foot', 'square feet', 'price', 'cost', 'fee', 'not to exceed',
+    # Compliance / qualification
+    'insurance', 'bond', 'certif', 'clearance', 'license', 'past performance',
+    'key personnel', 'quality control', 'quality assurance', 'inspection',
+    'small business', 'set-aside', 'set aside', 'socioeconomic',
+    # Scope / operations
+    'scope of work', 'statement of work', 'frequency', 'schedule', 'shift',
+    'coverage', 'staffing', 'fte', 'productivity', 'workload',
+    'square footage', 'building', 'facility', 'restroom', 'floor',
+    # Deadlines / submission
+    'due date', 'submission', 'submit', 'deadline', 'questions due',
+    'proposal due', 'site visit', 'pre-proposal',
+)
+
+
+def _prepare_text(raw: str, budget: int = TEXT_BUDGET) -> str:
+    """
+    Trim document text to fit the analysis budget without losing what matters.
+
+    For short docs: return unchanged.
+    For large docs (RFPs, PWSs, long contracts): always keep the front matter
+    (title, TOC, background — that's where document identity lives), then
+    score the remaining paragraphs by requirement-signal keywords and fill
+    the remaining budget with the highest-scoring paragraphs in original
+    document order. This preserves the sections that actually drive pricing
+    decisions instead of blindly truncating at char N.
+    """
+    raw = raw or ''
+    if len(raw) <= budget:
+        return raw
+
+    front_budget = min(FRONT_MATTER_CHARS, budget)
+    front = raw[:front_budget]
+    tail = raw[front_budget:]
+
+    # Split remaining text into paragraphs (blank-line separated).
+    paras = [p for p in re.split(r'\n\s*\n', tail) if p.strip()]
+
+    # Score each paragraph by number of signal-term hits (weighted by term length
+    # so multi-word phrases count more than single words).
+    def score(p: str) -> int:
+        lower = p.lower()
+        return sum(lower.count(t) * max(1, len(t.split())) for t in _SIGNAL_TERMS)
+
+    scored = [(i, score(p), p) for i, p in enumerate(paras)]
+    scored.sort(key=lambda x: (-x[1], x[0]))  # highest score, then earliest
+
+    remaining_budget = budget - len(front) - 200  # reserve a bit for markers
+    picked_idx = set()
+    running = 0
+    for idx, sc, p in scored:
+        if sc == 0:
+            break  # no more signal-bearing paragraphs worth including
+        cost = len(p) + 2
+        if running + cost > remaining_budget:
+            continue
+        picked_idx.add(idx)
+        running += cost
+
+    kept = '\n\n'.join(p for i, p in enumerate(paras) if i in picked_idx)
+    marker = f"\n\n[... {len(paras) - len(picked_idx)} lower-signal paragraphs omitted; kept requirement-bearing sections ...]\n\n"
+    return front + marker + kept
+
+
+def _build_content(extracted: dict, filename: str, instruction: str, text_budget: int = TEXT_BUDGET) -> list:
     """Assemble message content for text or vision documents."""
     if extracted.get('image_b64') and extracted.get('mime_type'):
         return [
@@ -56,7 +176,7 @@ def _build_content(extracted: dict, filename: str, instruction: str) -> list:
             },
             {"type": "text", "text": f"Filename: {filename}\n\n{instruction}"},
         ]
-    text = extracted.get('text', '')[:15000]
+    text = _prepare_text(extracted.get('text', ''), budget=text_budget)
     return [{"type": "text", "text": f"Filename: {filename}\n\nDocument content:\n{text}\n\n{instruction}"}]
 
 
@@ -67,9 +187,9 @@ def _build_content(extracted: dict, filename: str, instruction: str) -> list:
 CLASSIFY_PROMPT = """You are a document triage AI. Classify the document and return ONLY valid JSON:
 
 {
-  "document_type": "Invoice | Contract | Report | Receipt | Resume | Research Paper | Financial Statement | CSV Data | Pitch Deck | Policy | Other",
+  "document_type": "Invoice | Contract | Report | Receipt | Resume | Research Paper | Financial Statement | CSV Data | Pitch Deck | Policy | RFP | SOW | Other",
   "title": "inferred document title or topic",
-  "industry": "one of: retail_ecommerce, finance_banking, corporate_financial, healthcare, technology_saas, manufacturing, real_estate, legal_contracts, hr_recruiting, education, logistics_supply_chain, energy_utilities, hospitality_food, marketing_media, insurance, general",
+  "industry": "one of: retail_ecommerce, finance_banking, corporate_financial, healthcare, technology_saas, manufacturing, real_estate, legal_contracts, hr_recruiting, education, logistics_supply_chain, energy_utilities, hospitality_food, marketing_media, insurance, facilities_services, general",
   "industry_confidence": 0.0,
   "language": "primary language of the document"
 }
@@ -80,7 +200,8 @@ only when no industry clearly fits. Return ONLY the JSON object."""
 
 def classify(extracted: dict, filename: str) -> dict:
     client = _get_client()
-    content = _build_content(extracted, filename, "Classify this document. Return ONLY JSON.")
+    # Classification only needs the top of the document; keep Haiku fast + cheap.
+    content = _build_content(extracted, filename, "Classify this document. Return ONLY JSON.", text_budget=6000)
     try:
         resp = client.messages.create(
             model=HAIKU_MODEL,
@@ -185,11 +306,14 @@ def analyze(extracted: dict, filename: str, classification: dict = None) -> dict
         try:
             resp = client.messages.create(
                 model=model,
-                max_tokens=4000,
+                max_tokens=8000,
                 system=system_prompt,
                 messages=[{"role": "user", "content": content}],
             )
             raw = resp.content[0].text
+            if getattr(resp, 'stop_reason', None) == 'max_tokens':
+                # Truncated mid-JSON — try to salvage by closing open structures
+                raw = _close_truncated_json(raw)
             data = _parse_json(raw)
             data = _normalize(data)
             profile = get_profile(industry_key)
